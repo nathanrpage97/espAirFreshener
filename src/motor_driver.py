@@ -1,5 +1,5 @@
 import time
-from machine import Pin, PWM
+from machine import Pin
 
 MOTOR_DIR = 4 # specify the gpio pin of motor dir
 # dont use pin 1, it seems to freeze up when doing so
