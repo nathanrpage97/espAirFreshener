@@ -1,4 +1,5 @@
 from machine import RTC
+import machine
 import utime as time
 import constants
 import motor_driver
@@ -6,7 +7,6 @@ from state import State
 from network_controller import Network_Controller
 from nucleo_controller import NucleoController
 import request_handler
-import process_controls
 
 # Phases INIT, CHECK_SPRAY_BUTTON_PRESSED, CONNECT_NETWORK, GET_SERVER, CHECK_TO_SPRAY, SLEEP
 
@@ -14,6 +14,8 @@ import process_controls
 
 nc32 = NucleoController()
 state = State(constants.STATE_FILE)
+
+
 def init():
     """
     Called on start up. Locks nc32 from resetting. Determines wakeup reason
@@ -40,7 +42,6 @@ def connect_network():
 
 def get_server():
     global state
-    process_controls.lock_reset()
     data = request_handler.get_server_info()
     if data is None:
         return 'UNREACHED_SERVER'
@@ -81,9 +82,9 @@ def check_to_spray():
 
 
 def go_to_sleep():
-    nc32.reset_clock_time()
+    nc32.reset_clock_time(state.get('wait_time'))
     nc32.unlock_reset()
-    process_controls.deepsleep(state.get('wait_time'))
+    machine.deepsleep()
 
 
 phase_funcs = {
@@ -94,8 +95,8 @@ phase_funcs = {
     'SLEEP': go_to_sleep
 }
 
+
 def check_spray_button_pressed():
-    # have to determine way to detect reset type was for button spray
     if nc32.check_spray_button_pressed():
         motor_driver.spray()
 
@@ -117,4 +118,3 @@ while True:
     next_phase = loop(phase)
     phase = next_phase
     check_spray_button_pressed()
-

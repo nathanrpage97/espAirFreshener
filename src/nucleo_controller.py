@@ -22,7 +22,7 @@ class NucleoController:
     def get_clock_time(self):
         pass
 
-    def reset_clock_time(self):
+    def reset_clock_time(self, duration):
         pass
 
     def check_spray_button_pressed(self):
