@@ -1,15 +1,6 @@
 import time
 from machine import Pin
-
-MOTOR_DIR = 4 # specify the gpio pin of motor dir
-# dont use pin 1, it seems to freeze up when doing so
-MOTOR_PWM = 5 # specify the gpio pulse width value
-
-SPRAY_TIME = 1 # timers for spraying duration
-PAUSE_TIME = 0.2
-
-OFF = 0
-ON = 1
+from constants import MOTOR_DIR, MOTOR_PWM, SPRAY_TIME, PAUSE_TIME, OFF, ON
 
 motor_pin_a = Pin(MOTOR_DIR, Pin.OUT, value=OFF)
 motor_pin_b = Pin(MOTOR_PWM, Pin.OUT, value=OFF)

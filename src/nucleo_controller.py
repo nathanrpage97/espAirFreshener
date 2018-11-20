@@ -1,30 +1,30 @@
+from machine import Pin, I2C
+# construct an I2C bus
+i2c = I2C(scl=Pin(5), sda=Pin(4), freq=100000)
 
+def put_to_sleep(seconds):
+    """
+    Puts the controller to sleep for specified # of seconds
+    """
+    i2c.writeto(NUCLEO_ADDRESS, NUCLEO_COMMANDS['put_to_sleep']['command'].to_bytes(1, byteorder='big'))
+    i2c.writeto(NUCLEO_ADDRESS, seconds)
+def get_reset_reason():
+    """
+    0 = Timer
+    1 = Button Pressed
+    2 = Re-powered whole device
+    :return:
+    """
+    i2c.writeto(NUCLEO_ADDRESS, NUCLEO_COMMANDS['get_reset_reason']['command'].to_bytes(1, byteorder='big'))
+    return i2c.readfrom(NUCLEO_ADDRESS, NUCLEO_COMMANDS['get_reset_reason']['bytes'])
 
-class NucleoController:
-    def __init__(self):
-        pass
+def get_clock_time():
+    """
+    Gives clock time in number of seconds
+    """
+    i2c.writeto(NUCLEO_ADDRESS, NUCLEO_COMMANDS['get_clock_time']['command'].to_bytes(1, byteorder='big'))
+    return i2c.readfrom(NUCLEO_ADDRESS, NUCLEO_COMMANDS['get_clock_time']['bytes'])
 
-    def get_reset_reason(self):
-        """
-        0 = Timer
-        1 = Button Pressed
-        2 = Re-powered whole device
-        :return:
-        """
-        pass
-
-    def lock_reset(self):
-        pass
-
-    def unlock_reset(self):
-        pass
-
-    def get_clock_time(self):
-        pass
-
-    def reset_clock_time(self, duration):
-        pass
-
-    def check_spray_button_pressed(self):
-        pass
-
+def check_spray_button_pressed():
+    i2c.writeto(NUCLEO_ADDRESS, NUCLEO_COMMANDS['check_spray_button_pressed']['command'].to_bytes(2, byteorder='big'))
+    return i2c.readfrom(NUCLEO_ADDRESS, NUCLEO_COMMANDS['check_spray_button_pressed']['bytes'])

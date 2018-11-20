@@ -1,90 +1,80 @@
-from machine import RTC
-import machine
-import utime as time
-import constants
+from constants import RESET_POWER
+
+import nucleo_controller
 import motor_driver
-from state import State
-from network_controller import Network_Controller
-from nucleo_controller import NucleoController
+import state
+import clock_controller
 import request_handler
+import network_controller
 
-# Phases INIT, CHECK_SPRAY_BUTTON_PRESSED, CONNECT_NETWORK, GET_SERVER, CHECK_TO_SPRAY, SLEEP
-
-# phase = 'INIT'
-
-nc32 = NucleoController()
-state = State(constants.STATE_FILE)
-
-
+# controllers to handle
 def init():
     """
-    Called on start up. Locks nc32 from resetting. Determines wakeup reason
+    Called on start up. Locks nucleo_controller from resetting. Determines wakeup reason
     """
-    global state
-    nc32.lock_reset()  # stop it from resetting if user presses spray button
-    reset_reason = nc32.get_reset_reason()
+    reset_reason = nucleo_controller.get_reset_reason()
 
     # if powering up reinitialize the state
-    if reset_reason == 2:
+    if reset_reason == RESET_POWER:
         state.reinitialize()
     # provide the reset reason to the state
-    # also indicate it didn't reach server yet
-    state.update(dict(wakeup_reason=reset_reason, reached_server=False))
-
+    state.update(dict(wakeup_reason=reset_reason))
+    # set up the time from the board
+    clock_controller.init_time(c32.get_clock_time())
     return 'CONNECT_NETWORK'
 
 
 def connect_network():
-    global state
-    net_controller = Network_Controller(constants.WIFI_ESSID, constants.WIFI_PASSWORD)
-    return 'GET_SERVER' if net_controller.is_connected() else 'CHECK_TO_SPRAY'
+    """
+    Connect to the network
+    """
+    return 'GET_SERVER' if network_controller.connect() else 'CHECK_TO_SPRAY'
 
 
 def get_server():
-    global state
+    """
+    Get new server information if possible
+    """
     data = request_handler.get_server_info()
-    if data is None:
-        return 'UNREACHED_SERVER'
-    state.update(data)
+    if data is not None:
+        state.update(data)
     return 'CHECK_TO_SPRAY'
 
 
-def unreached_server():
-    # if starting up re-powered
-    nc32_time = nc32.get_clock_time()
-    if not state.get('reached_server'):
-        state.update(dict(current_time=state.get('current_time') + nc32_time*1000, wait_time=get_wait_time()))
-    else:
-        state.update(dict(wait_time=get_wait_time()))
-    return check_to_spray()
-
-
 def check_to_spray():
-    global state
-    # if starting up re-powered
-
-    if state.get('current_time') + 5*1000 > state.get('last_spray_time') + state.get('interval') * 60 * 1000:
+    """
+    See if server requested spray or past spray interval time
+    """
+    # check if within 10 seconds of next spray time
+    if clock_controller.get_time() + 10 >= state.get('last_spray_time') + state.get('interval'):
         motor_driver.spray()
         state.update(dict(
-            wait_time=60,
-            spray_now=False,
-            last_spray_time=state.get('current_time')
+            last_spray_time=clock_controller.get_time(),
+            spray_now=False
         ))
-        return 'SLEEP'
     elif state.get('spray_now'):
         motor_driver.spray()
-
-    state.update(dict(
-        wait_time=get_wait_time(),
-        spray_now=False,
-    ))
+        state.update(dict(
+            spray_now=False,
+        ))
     return 'SLEEP'
 
 
 def go_to_sleep():
-    nc32.reset_clock_time(state.get('wait_time'))
-    nc32.unlock_reset()
-    machine.deepsleep()
+    """
+    Put the device to sleep for a specified number of seconds
+    """
+    wait_time = (clock_controller.get_time() - state.get('last_spray_time')) % 60
+    # if more than 60 seconds to wait for interval,
+    # and wait_time smaller than 20 seconds. Extend wait time
+    next_spray_time = state.get('last_spray_time') + state.get('interval')
+    next_wake_time = clock_controller.get_time() + wait_time
+    if wait_time < 20 and  next_wake_time + 60 < next_spray_time:
+        wait_time += 60
+    nucleo_controller.reset_clock_time(wait_time)
+    # it should die after reaching here
+    while True: # spin lock to allow time for the nucleo to kill this processor
+        pass
 
 
 phase_funcs = {
@@ -97,24 +87,27 @@ phase_funcs = {
 
 
 def check_spray_button_pressed():
-    if nc32.check_spray_button_pressed():
+    """
+    Check if the real spray button was pressed by the user
+    """
+    if nucleo_controller.check_spray_button_pressed():
         motor_driver.spray()
 
 
 def loop(curr_phase):
+    """
+    Loop function for all the phases
+    """
     global phase_funcs
     print(phase)
     return phase_funcs[curr_phase]() if curr_phase in phase_funcs else 'SLEEP'
 
 
-def get_wait_time():
-    nc32_time = nc32.get_clock_time()
-    wait_time = 60 - (nc32_time % 60)
-    return wait_time if wait_time > 5 else 60
-
-
 phase = 'INIT'
 while True:
+    """
+    Loop that iterates through the loop function and then checks if spray button pressed
+    """
     next_phase = loop(phase)
     phase = next_phase
     check_spray_button_pressed()
