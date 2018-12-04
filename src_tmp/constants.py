@@ -1,3 +1,5 @@
+DEBUG = True
+
 
 # network constants
 WIFI_ESSID = 'iPhone'
@@ -7,7 +9,7 @@ WIFI_PASSWORD = '12345678'
 STATE_FILE = 'state.json'
 
 DEFAULT_STATE = dict(
-    last_spray_time=-1,      # gives the last time the device sprayed (within its interval), seconds since last power up
+    last_spray_time=0,      # gives the last time the device sprayed (within its interval), seconds since last power up
     interval=600,            # the interval in seconds to spray
     wakeup_reason=None,     # specifies the wake up reason for the device
     spray_now=False,

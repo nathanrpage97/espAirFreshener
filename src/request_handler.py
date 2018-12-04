@@ -1,11 +1,18 @@
 import urequests
 import ujson
-from constants import SERVER_URL
+import constants
 
 def get_server_info():
     try:
-        raw_server_info = urequests.get(SERVER_URL)
-        return ujson.loads(raw_server_info)
+        raw_server_info = urequests.get('http://172.20.10.2:8000/')
+        print(raw_server_info)
+        print("Server info:", raw_server_info.json())
+        return raw_server_info.json()
     except:
         return None
-    return dict(interval=1, spray_now=False)
+
+# def get_server_info():
+#     raw_server_info = urequests.get('http://172.20.10.6:8000/Downloads/filename.json')
+#     print(raw_server_info)
+#     print("Server info:", raw_server_info.json())
+#     return raw_server_info.json()

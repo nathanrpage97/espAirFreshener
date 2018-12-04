@@ -10,6 +10,7 @@ def spray():
     """
     Very basic spray algorithm. Spray down for select period of time then wait and then back up
     """
+    print("--- SPRAYING NOW ---")
     motor_pin_a.on()
     motor_pin_b.off()
     time.sleep(constants.SPRAY_TIME)
